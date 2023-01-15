@@ -1,0 +1,77 @@
+version: '3.8'
+
+networks:
+  webnet:
+
+volumes:
+  dbdata:
+    name: mrnn-db
+
+services:
+  frontend:
+    build:
+      context: ./mrnn-fe
+      dockerfile: Dockerfile
+      target: development
+      args:
+        NODE_ENV: development
+    container_name: mrnn-fe
+    image: "${ORG_NAME}/mrnn-fe:${FE_BUILD_VERSION}"
+    volumes:
+      - './mrnn-fe:/app'
+      - '/app/node_modules'
+    restart: unless-stopped
+    networks:
+      - webnet
+    ports:
+      - 3002:3002
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - PORT=3002
+
+  backend:
+    build:
+      context: ./mrnn-be
+      dockerfile: Dockerfile
+      target: development
+      args:
+        NODE_ENV: development
+    container_name: mrnn-be
+    image: "${ORG_NAME}/mrnn-be:${BE_BUILD_VERSION}"
+    restart: unless-stopped
+    networks:
+      - webnet
+    volumes:
+      - "./mrnn-be/:/app"
+      - /app/node_modules
+    depends_on:
+      - mariadb
+    ports:
+      - 3001:3000
+
+  mariadb:
+    image: mariadb:10
+    restart: unless-stopped
+    networks:
+      - webnet
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${DB_DATABASE_NAME}
+      - MYSQL_USER=${DB_USERNAME}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - "dbdata:/var/lib/mysql"
+  
+  pma:
+    image: phpmyadmin/phpmyadmin
+    restart: unless-stopped
+    environment:
+      - PMA_HOST=mariadb
+      - PMA_PORT=3306
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+    networks:
+      - webnet
+    ports:
+      - 3003:80
+    links:
+      - mariadb:mariadb
