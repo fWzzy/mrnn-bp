@@ -7,6 +7,7 @@ http.defaults.headers.post['Content-Type'] = 'application/json'
 http.defaults.headers.put['Content-Type'] = 'application/json'
 
 http.interceptors.request.use((config) => {
+  config.headers = config.headers ?? {};
   const authToken = UserSession.getToken()
   if (authToken) {
     const token = `Bearer ${authToken}`
